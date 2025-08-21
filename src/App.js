@@ -1,13 +1,10 @@
 import './App.css';
-import ShiftCalendar from "./components/ShiftCalendar";
+import Dashboard from "./components/Dashboard";
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Work Time Tracker</h1>
-        <ShiftCalendar />
-      </header>
+      <Dashboard />
     </div>
   );
 }

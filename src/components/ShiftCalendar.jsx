@@ -9,8 +9,8 @@ export default function ShiftCalendar() {
   const [events, setEvents] = useState([
     {
       title: "6.5 hrs Worked",
-      start: new Date(2025, 7, 20, 10, 0), // Aug 20, 2025 - 10:00 AM
-      end: new Date(2025, 7, 20, 16, 30),  // Aug 20, 2025 - 4:30 PM
+      start: new Date(2025, 7, 20, 10, 0),
+      end: new Date(2025, 7, 20, 16, 30),
     },
     {
       title: "Not Worked",
@@ -25,7 +25,6 @@ export default function ShiftCalendar() {
     },
   ]);
 
-  // Handle adding events when user clicks/drag-selects a date range
   const handleSelect = ({ start, end }) => {
     const title = window.prompt("Enter shift details (e.g. 8 hrs Worked)");
     if (title) {
@@ -34,8 +33,7 @@ export default function ShiftCalendar() {
   };
 
   return (
-    <div className="p-6" style={{ height: "80vh" }}>
-      <h2 className="text-xl font-bold mb-4">Work Shift Calendar</h2>
+    <div className="w-full h-full">
       <Calendar
         localizer={localizer}
         events={events}
@@ -43,7 +41,7 @@ export default function ShiftCalendar() {
         endAccessor="end"
         selectable
         onSelectSlot={handleSelect}
-        style={{ height: "100%", border: "1px solid #ddd", borderRadius: "8px" }}
+        style={{ height: "100%", minHeight: "80vh" }}
       />
     </div>
   );
