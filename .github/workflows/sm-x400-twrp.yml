@@ -1,0 +1,71 @@
+name: SM-X400 experimental TWRP
+on:
+  push:
+    branches: [sm-x400-twrp-build]
+    paths: ['.github/workflows/sm-x400-twrp.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    if: github.ref == 'refs/heads/sm-x400-twrp-build'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Prepare build runner
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost /usr/share/swift
+          sudo apt-get clean
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gperf lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev libxml2-utils lzop openjdk-11-jdk python3 rsync unzip xsltproc zip zlib1g-dev
+          mkdir -p "$HOME/bin" "$HOME/twrp"
+          curl --fail --location --retry 3 https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          git config --global user.name "SM-X400 Build"
+          git config --global user.email "build@example.invalid"
+          df -h
+      - name: Fetch TWRP and exact device tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$HOME/twrp"
+          repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+          repo sync -c --no-clone-bundle --no-tags --force-sync -j4
+          git clone --depth=1 --branch android-12.1 https://github.com/SavedByLight/android_device_samsung_gts10litewifi.git device/samsung/gts10litewifi
+          git -C device/samsung/gts10litewifi lfs pull
+          git -C device/samsung/gts10litewifi rev-parse HEAD
+          df -h
+      - name: Compile experimental recovery
+        shell: bash
+        run: |
+          set -eo pipefail
+          cd "$HOME/twrp"
+          export ALLOW_MISSING_DEPENDENCIES=true
+          source build/envsetup.sh
+          lunch twrp_gts10litewifi-eng
+          mka -j2 recoveryimage
+      - name: Validate and package recovery
+        shell: bash
+        run: |
+          set -euxo pipefail
+          img="$HOME/twrp/out/target/product/gts10litewifi/recovery.img"
+          test -s "$img"
+          test "$(head -c 8 "$img")" = 'ANDROID!'
+          test "$(stat -c%s "$img")" -le 100663296
+          mkdir -p "$RUNNER_TEMP/sm-x400-output"
+          cd "$RUNNER_TEMP/sm-x400-output"
+          cp "$img" recovery.img
+          tar --format=ustar -cf SM-X400-TWRP-UNTESTED.tar recovery.img
+          sha256sum recovery.img SM-X400-TWRP-UNTESTED.tar > SHA256SUMS.txt
+          git -C "$HOME/twrp/device/samsung/gts10litewifi" rev-parse HEAD > DEVICE_TREE_COMMIT.txt
+          printf '%s\n' 'Experimental build; not boot tested. Do not flash until firmware, bootloader and AVB compatibility are verified.' > WARNING.txt
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SM-X400-TWRP-UNTESTED
+          path: ${{ runner.temp }}/sm-x400-output/
+          if-no-files-found: error
+          retention-days: 7
